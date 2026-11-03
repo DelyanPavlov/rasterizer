@@ -19,9 +19,9 @@ namespace triangle_test
             Vertex[] vertecies = new Vertex[4];
 
             vertecies[0] = new Vertex(0.1, 0.1, 0, 0);
-            vertecies[1] = new Vertex(0.9, 0.1, 1, 0);
-            vertecies[2] = new Vertex(0.9, 0.9, 1, 1);
-            vertecies[3] = new Vertex(0.1, 0.9, 0, 1);
+            vertecies[1] = new Vertex(0.9, 0.1, 3, 0);
+            vertecies[2] = new Vertex(0.9, 0.9, 2, 2);
+            vertecies[3] = new Vertex(0.1, 0.9, 0, 2);
 
             for (int i = 0; i < vertecies.Length; i++)
             {
@@ -62,7 +62,7 @@ namespace triangle_test
                     for (int y = 0; y < tris.Length; y++)
                     {
                         vwu = tris[y].CalcPixelColor(new Vec2(i, j));
-                        if (vwu[0] + vwu[1] + vwu[2] <= 1.0 && vwu[0] >= 0 && vwu[1] >= 0 && vwu[2] >= 0)
+                        if (vwu[0] + vwu[1] + vwu[2] <= 1.0 && vwu[0] >= 0 && vwu[1] >= 0 && vwu[2] >= 0 && !tris[y].isBackwards)
                         {
                             PixelCol = Helper.SampleTexture(texture, tris[y], vwu);
                             colorDat[i, j] = PixelCol;

@@ -11,6 +11,8 @@ namespace triangle_test
         public Vec2[] normals = new Vec2[3];
         public Vec2[] midPoints = new Vec2[3];
 
+        public bool isBackwards;
+
         public Triangle(Vertex[] vertices)
         {
             this.vertices = vertices;
@@ -23,6 +25,7 @@ namespace triangle_test
 
         public void CalcTriNorms()
         {
+            double area = 0;
             for (int i = 0; i < 3; i++)
             {
                 Vec2 a = vertices[i].position;
@@ -33,8 +36,18 @@ namespace triangle_test
                 Vec2 edge = b - a;
                 Vec2 n = Vec2.Normalize(new Vec2(edge.Y, -edge.X));
 
+                area += (a.X - b.X) * (a.Y + b.Y);
+
                 if (Vec2.Dot(n, opposite - midPoints[i]) < 0) n = -n;
                 normals[i] = n;
+            }
+            if(area < 0)
+            {
+                isBackwards = true;
+            }
+            else
+            {
+                isBackwards = false;
             }
         }
 
