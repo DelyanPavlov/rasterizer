@@ -8,6 +8,7 @@ namespace triangle_test
     internal class Vertex
     {
         public double screenX, screenY;
+        public double SpaceX, spaceY, spaceZ;
         public double u, v;
         public Vec2 position;
         public Vec2 ScreenPosition;
