@@ -8,17 +8,18 @@ namespace triangle_test
     internal class Vertex
     {
         public double screenX, screenY;
-        public double SpaceX, spaceY, spaceZ;
+        public double spaceX, spaceY, spaceZ;
         public double u, v;
         public Vec2 position;
         public Vec2 ScreenPosition;
-        public Vertex(double screenX, double screenY, double u, double v)
+
+        public Vertex(double spaceX, double spaceY, double spaceZ, double u, double v)
         {
-            this.screenX = screenX;
-            this.screenY = screenY;
+            this.spaceX = spaceX + Camera.X;
+            this.spaceY = spaceY + Camera.Y;
+            this.spaceZ = spaceZ + Camera.Z;
             this.u = u;
             this.v = v;
-            position = new Vec2((float)screenX, (float)screenY);
         }
 
         public void calcScreenPos(int windowW, int windowH)

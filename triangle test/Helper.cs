@@ -19,7 +19,7 @@ namespace triangle_test
 
             for (int i = 3; i < width * height + 3; i++)
             {
-                colorData[(i - 3) / width, (i - 3) % width] = new Color(int.Parse(Data[i][0]), int.Parse(Data[i][1]), int.Parse(Data[i][2]));
+                colorData[(i - 3) % width, (i - 3) / width] = new Color(int.Parse(Data[i][0]), int.Parse(Data[i][1]), int.Parse(Data[i][2]));
             }
 
             return colorData;
@@ -36,12 +36,10 @@ namespace triangle_test
             int sampleX = (int)Math.Round((tempU[0] + tempU[1] + tempU[2]) * texture.GetLength(0));
             int sampleY = (int)Math.Round((tempV[0] + tempV[1] + tempV[2]) * texture.GetLength(1));
 
-            sampleX -= (sampleX / texture.GetLength(0)) * texture.GetLength(0);
-            sampleY -= (sampleY / texture.GetLength(1)) * texture.GetLength(1);
-            if (texture[sampleX, sampleY] == null)
-            {
+            // proper wrap-around, also safe for negative values
+            sampleX = ((sampleX % texture.GetLength(0)) + texture.GetLength(0)) % texture.GetLength(0);
+            sampleY = ((sampleY % texture.GetLength(1)) + texture.GetLength(1)) % texture.GetLength(1);
 
-            }
             return texture[sampleX, sampleY];
         }
     }

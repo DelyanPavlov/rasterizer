@@ -53,7 +53,7 @@ namespace triangle_test
 
         public double[] CalcPixelColor(Vec2 p)
         {
-            p = new Vec2(p.X / Program.screenDim.X, p.Y / Program.screenDim.Y);
+            p = new Vec2(p.X / Camera.screenDim.X, p.Y / Camera.screenDim.Y);
             Vec2 a = vertices[0].position, b = vertices[1].position, c = vertices[2].position;
             Vec2 v0 = b - a, v1 = c - a, v2 = p - a;
 
