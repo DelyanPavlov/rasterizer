@@ -36,9 +36,8 @@ namespace triangle_test
             int sampleX = (int)Math.Round((tempU[0] + tempU[1] + tempU[2]) * texture.GetLength(0));
             int sampleY = (int)Math.Round((tempV[0] + tempV[1] + tempV[2]) * texture.GetLength(1));
 
-            // proper wrap-around, also safe for negative values
-            sampleX = ((sampleX % texture.GetLength(0)) + texture.GetLength(0)) % texture.GetLength(0);
-            sampleY = ((sampleY % texture.GetLength(1)) + texture.GetLength(1)) % texture.GetLength(1);
+            sampleX = sampleX % texture.GetLength(0);
+            sampleY = sampleY % texture.GetLength(1);
 
             return texture[sampleX, sampleY];
         }

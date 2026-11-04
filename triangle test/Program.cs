@@ -11,18 +11,16 @@ namespace triangle_test
         static Triangle[] tris = new Triangle[2];
         public static Color[,] texture;
         public static int fps = 24;
-        public static int renderLength = 2;
-        public static VideoWriter writer = new VideoWriter("out.mp4", FourCC.MP4V, fps, new Size((int)Camera.screenDim.X, (int)Camera.screenDim.Y));
+        public static int renderLength = 6;
+        public static Vertex[] vertecies = new Vertex[4];
+        public static VideoWriter writer = new VideoWriter("../../../output/out.mp4", FourCC.MP4V, fps, new Size((int)Camera.screenDim.X, (int)Camera.screenDim.Y));
 
         static void Main(string[] args)
         {
-
-            Vertex[] vertecies = new Vertex[4];
-
             vertecies[0] = new Vertex(1, 1, 20, 0, 0);
-            vertecies[1] = new Vertex(9, 1, 20, 3, 0);
-            vertecies[2] = new Vertex(9, 9, 20, 2, 2);
-            vertecies[3] = new Vertex(1, 9, 20, 0, 2);
+            vertecies[1] = new Vertex(10, 1, 20, 2, 0);
+            vertecies[2] = new Vertex(10, 10, 20, 2, 2);
+            vertecies[3] = new Vertex(1, 10, 20, 0, 2);
 
             tris[0] = new Triangle(vertecies[0], vertecies[1], vertecies[2]);
             tris[1] = new Triangle(vertecies[0], vertecies[2], vertecies[3]);
@@ -40,7 +38,9 @@ namespace triangle_test
             {
                 tris[i].CalcTriNorms();
             }
+            Console.WriteLine("Loading texture...");
             texture = Helper.LoadTexture(@"../../../assets/textures/texture.ppm");
+
             Render();
         }
 
@@ -50,33 +50,44 @@ namespace triangle_test
             int height = (int)Camera.screenDim.Y;
             int totalFrames = fps * renderLength;
 
-            if (!writer.IsOpened())
+            byte[][] frame = new byte[totalFrames][];
+            Triangle[][] tempTri = new Triangle[totalFrames][];
+            Vertex[][] tempVert = new Vertex[totalFrames][];
+            for (int i = 0; i < totalFrames; i++)
             {
-                Console.WriteLine("VideoWriter failed to open. Check the codec / OpenCvSharp runtime package.");
-                return;
+                tempVert[i] = new Vertex[vertecies.Length];
+                for (int j = 0; j < vertecies.Length; j++)
+                {
+                    vertecies[j].spaceX += 0.05;
+                    tempVert[i][j] = new Vertex(vertecies[j]);
+                }
+                tempTri[i] = new Triangle[tris.Length];
+                frame[i] = new byte[width * height * 3];
             }
-
-            byte[] frame = new byte[width * height * 3];
-
-            // Nothing moves yet, so render once and write the same frame repeatedly.
-            // When you add animation, move this call inside the loop and use t.
-            RenderFrame(frame, width, height);
-
-            using Mat mat = Mat.FromPixelData(height, width, MatType.CV_8UC3, frame);
-            for (int t = 0; t < totalFrames; t++)
+            Parallel.For(0, totalFrames, t =>
             {
-                writer.Write(mat);
+                tempTri[t][0] = new Triangle(tempVert[t][0], tempVert[t][1], tempVert[t][2]);
+                tempTri[t][1] = new Triangle(tempVert[t][0], tempVert[t][2], tempVert[t][3]);
+                tempTri[t][0] = Camera.CalcScreenCords(tempTri[t][0]);
+                tempTri[t][1] = Camera.CalcScreenCords(tempTri[t][1]);
+                RenderFrame(frame[t], width, height, tempTri[t]);
                 Console.WriteLine($"Wrote frame {t + 1}/{totalFrames}");
+            });
+
+            Console.WriteLine("Writing...");
+            for (int i = 0; i < totalFrames; i++)
+            {
+                using Mat mat = Mat.FromPixelData(height, width, MatType.CV_8UC3, frame[i]);
+                writer.Write(mat);
             }
 
-            // Finalises the MP4. Without this the file is unplayable.
             writer.Release();
-            Console.WriteLine("Done: " + Path.GetFullPath("out.mp4"));
+            Console.WriteLine("Done!");
         }
 
-        static void RenderFrame(byte[] frame, int width, int height)
+        static void RenderFrame(byte[] frame, int width, int height, Triangle[] tempTri)
         {
-            // Background, BGR order (RGB 146,179,93)
+            double[] tempVWU;
             for (int i = 0; i < frame.Length; i += 3)
             {
                 frame[i + 0] = 93;
@@ -91,26 +102,22 @@ namespace triangle_test
                     int idx = (y * width + x) * 3;
                     var p = new Vec2(x, y);
 
-                    for (int k = 0; k < tris.Length; k++)
+                    for (int k = 0; k < tempTri.Length; k++)
                     {
-                        if (tris[k].isBackwards) continue;
+                        if (tempTri[k].isBackwards) continue;
 
-                        vwu = tris[k].CalcPixelColor(p);
+                        tempVWU = tempTri[k].CalcPixelColor(p);
 
-                        // small epsilon so pixels on the shared edge are not dropped
                         const double eps = -1e-9;
-                        if (vwu[0] >= eps && vwu[1] >= eps && vwu[2] >= eps)
+                        if (tempVWU[0] >= eps && tempVWU[1] >= eps && tempVWU[2] >= eps)
                         {
-                            Color c = Helper.SampleTexture(texture, tris[k], vwu);
+                            Color c = Helper.SampleTexture(texture, tempTri[k], tempVWU);
                             frame[idx + 0] = (byte)Math.Clamp(c.B, 0, 255);
                             frame[idx + 1] = (byte)Math.Clamp(c.G, 0, 255);
                             frame[idx + 2] = (byte)Math.Clamp(c.R, 0, 255);
                         }
                     }
                 }
-
-                if (y % 100 == 0)
-                    Console.WriteLine($"Rendering row {y}/{height}");
             }
         }
     }

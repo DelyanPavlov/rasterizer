@@ -26,5 +26,10 @@ namespace triangle_test
         {
             ScreenPosition = new Vec2((float)screenX * windowW, (float)screenY * windowH);
         }
+        public Vertex(Vertex o)
+        {
+            spaceX = o.spaceX; spaceY = o.spaceY; spaceZ = o.spaceZ;
+            u = o.u; v = o.v;
+        }
     }
 }
