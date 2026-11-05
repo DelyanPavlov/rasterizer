@@ -8,47 +8,16 @@ namespace triangle_test
     internal class Triangle
     {
         public Vertex[] vertices = new Vertex[3];
-        public Vec2[] normals = new Vec2[3];
+        public Vec2[] UVs = new Vec2[3];
+        public Vec3 normals = new Vec3(1);
         public Vec2[] midPoints = new Vec2[3];
 
         public bool isBackwards;
-
-        public Triangle(Vertex[] vertices)
-        {
-            this.vertices = vertices;
-        }
-
-        public Triangle(Vertex v1, Vertex v2, Vertex v3)
+        public Triangle(Vertex v1, Vertex v2, Vertex v3, Vec2 UV1, Vec2 UV2, Vec2 UV3, Vec3 norm1, Vec3 norm2, Vec3 norm3)
         {
             this.vertices = [v1, v2, v3];
-        }
-
-        public void CalcTriNorms()
-        {
-            double area = 0;
-            for (int i = 0; i < 3; i++)
-            {
-                Vec2 a = vertices[i].position;
-                Vec2 b = vertices[(i + 1) % 3].position;
-                Vec2 opposite = vertices[(i + 2) % 3].position;
-
-                midPoints[i] = (a + b) / 2;
-                Vec2 edge = b - a;
-                Vec2 n = Vec2.Normalize(new Vec2(edge.Y, -edge.X));
-
-                area += (a.X - b.X) * (a.Y + b.Y);
-
-                if (Vec2.Dot(n, opposite - midPoints[i]) < 0) n = -n;
-                normals[i] = n;
-            }
-            if(area < 0)
-            {
-                isBackwards = true;
-            }
-            else
-            {
-                isBackwards = false;
-            }
+            this.UVs = [UV1, UV2, UV3];
+            this.normals = Vec3.Cross(norm2 - norm1, norm3 - norm1);
         }
 
         public double[] CalcPixelColor(Vec2 p)

@@ -1,4 +1,4 @@
-﻿
+﻿using System.Diagnostics;
 using System.Numerics;
 using System.Text;
 using OpenCvSharp;
@@ -7,41 +7,47 @@ namespace triangle_test
 {
     internal class Program
     {
-        static double[] vwu = new double[3];
-        static Triangle[] tris = new Triangle[2];
+        const string modelPath = @"../../../assets/models/cube.obj";
         public static Color[,] texture;
         public static int fps = 24;
-        public static int renderLength = 6;
-        public static Vertex[] vertecies = new Vertex[4];
+        public static int renderLength = 4;
         public static VideoWriter writer = new VideoWriter("../../../output/out.mp4", FourCC.MP4V, fps, new Size((int)Camera.screenDim.X, (int)Camera.screenDim.Y));
 
         static void Main(string[] args)
         {
-            vertecies[0] = new Vertex(1, 1, 20, 0, 0);
-            vertecies[1] = new Vertex(10, 1, 20, 2, 0);
-            vertecies[2] = new Vertex(10, 10, 20, 2, 2);
-            vertecies[3] = new Vertex(1, 10, 20, 0, 2);
-
-            tris[0] = new Triangle(vertecies[0], vertecies[1], vertecies[2]);
-            tris[1] = new Triangle(vertecies[0], vertecies[2], vertecies[3]);
-
-            for (int i = 0; i < tris.Length; i++)
-            {
-                tris[i] = Camera.CalcScreenCords(tris[i]);
-                for (int j = 0; j < 3; j++)
-                {
-                    tris[i].vertices[j].calcScreenPos((int)Camera.screenDim.X, (int)Camera.screenDim.Y);
-                }
-            }
-
-            for (int i = 0; i < tris.Length; i++)
-            {
-                tris[i].CalcTriNorms();
-            }
             Console.WriteLine("Loading texture...");
             texture = Helper.LoadTexture(@"../../../assets/textures/texture.ppm");
-
+            Stopwatch sw = Stopwatch.StartNew();
             Render();
+            sw.Stop();
+            Console.WriteLine($"Time elapsed: {sw.ElapsedMilliseconds}ms");
+        }
+        static void RotateY(Triangle[] tris, double angle)
+        {
+            double cos = Math.Cos(angle);
+            double sin = Math.Sin(angle);
+
+            var done = new HashSet<Vertex>(ReferenceEqualityComparer.Instance);
+
+            foreach (Triangle tri in tris)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    Vertex v = tri.vertices[j];
+                    if (!done.Add(v)) continue;
+
+                    double x = v.spaceX - Camera.X;
+                    double y = v.spaceY - Camera.Y;
+                    double z = v.spaceZ - Camera.Z;
+
+                    double rx = x * cos + z * sin;
+                    double rz = -x * sin + z * cos;
+
+                    v.spaceX = rx - Camera.X;
+                    v.spaceY = y - Camera.Y;
+                    v.spaceZ = rz - Camera.Z;
+                }
+            }
         }
 
         static void Render()
@@ -51,26 +57,28 @@ namespace triangle_test
             int totalFrames = fps * renderLength;
 
             byte[][] frame = new byte[totalFrames][];
-            Triangle[][] tempTri = new Triangle[totalFrames][];
-            Vertex[][] tempVert = new Vertex[totalFrames][];
             for (int i = 0; i < totalFrames; i++)
             {
-                tempVert[i] = new Vertex[vertecies.Length];
-                for (int j = 0; j < vertecies.Length; j++)
-                {
-                    vertecies[j].spaceX += 0.05;
-                    tempVert[i][j] = new Vertex(vertecies[j]);
-                }
-                tempTri[i] = new Triangle[tris.Length];
                 frame[i] = new byte[width * height * 3];
             }
+
+
             Parallel.For(0, totalFrames, t =>
             {
-                tempTri[t][0] = new Triangle(tempVert[t][0], tempVert[t][1], tempVert[t][2]);
-                tempTri[t][1] = new Triangle(tempVert[t][0], tempVert[t][2], tempVert[t][3]);
-                tempTri[t][0] = Camera.CalcScreenCords(tempTri[t][0]);
-                tempTri[t][1] = Camera.CalcScreenCords(tempTri[t][1]);
-                RenderFrame(frame[t], width, height, tempTri[t]);
+                Triangle[] tris = Helper.LoadModel(modelPath);
+                double angle = 2 * Math.PI;
+                RotateY(tris, angle);
+
+                for (int i = 0; i < tris.Length; i++)
+                {
+                    tris[i] = Camera.CalcScreenCords(tris[i]);
+                    for (int j = 0; j < 3; j++)
+                    {
+                        tris[i].vertices[j].calcScreenPos(width, height);
+                    }
+                }
+
+                RenderFrame(frame[t], width, height, tris);
                 Console.WriteLine($"Wrote frame {t + 1}/{totalFrames}");
             });
 
@@ -88,6 +96,7 @@ namespace triangle_test
         static void RenderFrame(byte[] frame, int width, int height, Triangle[] tempTri)
         {
             double[] tempVWU;
+            double[] depth = new double[width * height];
             for (int i = 0; i < frame.Length; i += 3)
             {
                 frame[i + 0] = 93;
@@ -99,7 +108,8 @@ namespace triangle_test
             {
                 for (int x = 0; x < width; x++)
                 {
-                    int idx = (y * width + x) * 3;
+                    int pix = y * width + x;
+                    int idx = pix * 3;
                     var p = new Vec2(x, y);
 
                     for (int k = 0; k < tempTri.Length; k++)
@@ -111,10 +121,18 @@ namespace triangle_test
                         const double eps = -1e-9;
                         if (tempVWU[0] >= eps && tempVWU[1] >= eps && tempVWU[2] >= eps)
                         {
+                            Vertex[] vs = tempTri[k].vertices;
+                            double invZ = tempVWU[2] / vs[0].spaceZ
+                                        + tempVWU[0] / vs[1].spaceZ
+                                        + tempVWU[1] / vs[2].spaceZ;
+
+                            if (invZ <= depth[pix]) continue;
+                            depth[pix] = invZ;
+
                             Color c = Helper.SampleTexture(texture, tempTri[k], tempVWU);
-                            frame[idx + 0] = (byte)Math.Clamp(c.B, 0, 255);
-                            frame[idx + 1] = (byte)Math.Clamp(c.G, 0, 255);
-                            frame[idx + 2] = (byte)Math.Clamp(c.R, 0, 255);
+                            frame[idx + 0] = (byte)c.B;
+                            frame[idx + 1] = (byte)c.G;
+                            frame[idx + 2] = (byte)c.R;
                         }
                     }
                 }

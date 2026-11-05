@@ -9,17 +9,14 @@ namespace triangle_test
     {
         public double screenX, screenY;
         public double spaceX, spaceY, spaceZ;
-        public double u, v;
         public Vec2 position;
         public Vec2 ScreenPosition;
 
-        public Vertex(double spaceX, double spaceY, double spaceZ, double u, double v)
+        public Vertex(double spaceX, double spaceY, double spaceZ)
         {
             this.spaceX = spaceX + Camera.X;
             this.spaceY = spaceY + Camera.Y;
             this.spaceZ = spaceZ + Camera.Z;
-            this.u = u;
-            this.v = v;
         }
 
         public void calcScreenPos(int windowW, int windowH)
@@ -29,7 +26,6 @@ namespace triangle_test
         public Vertex(Vertex o)
         {
             spaceX = o.spaceX; spaceY = o.spaceY; spaceZ = o.spaceZ;
-            u = o.u; v = o.v;
         }
     }
 }

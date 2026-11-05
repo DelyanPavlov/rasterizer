@@ -7,9 +7,9 @@ namespace triangle_test
 {
     internal static class Camera
     {
-        public static double X = 0, Y = 0, Z = 0;
+        public static double X = -8.9, Y = -5, Z = -10;
         public static double t = 1;
-        public static Vec2 screenDim = new Vec2(1920, 1080);
+        public static Vec2 screenDim = new Vec2(800, 600);
 
         public static double aspect = 16.0 / 9.0;
         static double nearPlane = 0.3;
