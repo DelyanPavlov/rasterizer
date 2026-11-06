@@ -9,8 +9,8 @@ namespace triangle_test
     {
         const string modelPath = @"../../../assets/models/cube.obj";
         public static Color[,] texture;
-        public static int fps = 24;
-        public static int renderLength = 4;
+        public static int fps = 30;
+        public static int renderLength = 10;
         public static VideoWriter writer = new VideoWriter("../../../output/out.mp4", FourCC.MP4V, fps, new Size((int)Camera.screenDim.X, (int)Camera.screenDim.Y));
 
         static void Main(string[] args)
@@ -66,21 +66,40 @@ namespace triangle_test
             Parallel.For(0, totalFrames, t =>
             {
                 Triangle[] tris = Helper.LoadModel(modelPath);
-                double angle = 2 * Math.PI;
+                double angle = 2 * Math.PI * t / 360.0;
                 RotateY(tris, angle);
-
+            
                 for (int i = 0; i < tris.Length; i++)
                 {
-                    tris[i] = Camera.CalcScreenCords(tris[i]);
                     for (int j = 0; j < 3; j++)
                     {
                         tris[i].vertices[j].calcScreenPos(width, height);
                     }
+                    tris[i] = Camera.CalcScreenCords(tris[i]);
                 }
-
+            
                 RenderFrame(frame[t], width, height, tris);
                 Console.WriteLine($"Wrote frame {t + 1}/{totalFrames}");
             });
+
+            //for (int t = 0; t < totalFrames; t++)
+            //{
+            //    Triangle[] tris = Helper.LoadModel(modelPath);
+            //    double angle = 2 * Math.PI * t / 360.0;
+            //    RotateY(tris, angle);
+                //
+            //    for (int i = 0; i < tris.Length; i++)
+            //    {
+            //        tris[i] = Camera.CalcScreenCords(tris[i]);
+            //        for (int j = 0; j < 3; j++)
+            //        {
+            //            tris[i].vertices[j].calcScreenPos(width, height);
+            //        }
+            //    }
+                //
+            //    RenderFrame(frame[t], width, height, tris);
+            //    Console.WriteLine($"Wrote frame {t + 1}/{totalFrames}");
+            //}
 
             Console.WriteLine("Writing...");
             for (int i = 0; i < totalFrames; i++)
@@ -104,32 +123,45 @@ namespace triangle_test
                 frame[i + 2] = 146;
             }
 
-            for (int y = 0; y < height; y++)
+
+            for (int t = 0; t < tempTri.Length; t++)
             {
-                for (int x = 0; x < width; x++)
+                if (tempTri[t].isBackwards) continue;
+
+                Vertex[] vs = tempTri[t].vertices;
+
+                double minX = Math.Min(Math.Min(vs[0].ScreenPosition.X, vs[1].ScreenPosition.X), vs[2].ScreenPosition.X);
+                double maxX = Math.Max(Math.Max(vs[0].ScreenPosition.X, vs[1].ScreenPosition.X), vs[2].ScreenPosition.X);
+                double minY = Math.Min(Math.Min(vs[0].ScreenPosition.Y, vs[1].ScreenPosition.Y), vs[2].ScreenPosition.Y);
+                double maxY = Math.Max(Math.Max(vs[0].ScreenPosition.Y, vs[1].ScreenPosition.Y), vs[2].ScreenPosition.Y);
+
+                int left = (int)Math.Max(0, Math.Min(width - 1, Math.Floor(minX)));
+                int right = (int)Math.Max(0, Math.Min(width - 1, Math.Ceiling(maxX)));
+                int top = (int)Math.Max(0, Math.Min(height - 1, Math.Floor(minY)));
+                int bottom = (int)Math.Max(0, Math.Min(height - 1, Math.Ceiling(maxY)));
+
+                for (int y = top; y <= bottom; y++)
                 {
-                    int pix = y * width + x;
-                    int idx = pix * 3;
-                    var p = new Vec2(x, y);
-
-                    for (int k = 0; k < tempTri.Length; k++)
+                    for (int x = left; x <= right; x++)
                     {
-                        if (tempTri[k].isBackwards) continue;
+                        int pix = y * width + x;
+                        int idx = pix * 3;
+                        var p = new Vec2(x, y);
 
-                        tempVWU = tempTri[k].CalcPixelColor(p);
+                        tempVWU = tempTri[t].CalcPixelColor(p);
 
                         const double eps = -1e-9;
                         if (tempVWU[0] >= eps && tempVWU[1] >= eps && tempVWU[2] >= eps)
                         {
-                            Vertex[] vs = tempTri[k].vertices;
-                            double invZ = tempVWU[2] / vs[0].spaceZ
-                                        + tempVWU[0] / vs[1].spaceZ
-                                        + tempVWU[1] / vs[2].spaceZ;
+                            Vertex[] vss = tempTri[t].vertices;
+                            double invZ = tempVWU[2] / vss[0].spaceZ
+                                        + tempVWU[0] / vss[1].spaceZ
+                                        + tempVWU[1] / vss[2].spaceZ;
 
                             if (invZ <= depth[pix]) continue;
                             depth[pix] = invZ;
 
-                            Color c = Helper.SampleTexture(texture, tempTri[k], tempVWU);
+                            Color c = Helper.SampleTexture(texture, tempTri[t], tempVWU);
                             frame[idx + 0] = (byte)c.B;
                             frame[idx + 1] = (byte)c.G;
                             frame[idx + 2] = (byte)c.R;
